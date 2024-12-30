@@ -38,7 +38,8 @@
                     4 = 128 Bytes (only EP1), 5 = 256 Bytes (EP1), all others reserved
     ba BANK:        0 = 1 Bank, 1 = 2 Banks, all others reserved
 
-Endpoint 0, Control OUT, 8 byte FIFO */
+Endpoint 0, Control OUT, 8 byte FIFO
+*/
 
 #define Ep0_ty 0    /* Type Control */
 #define Ep0_di 0    /* Direction OUT */
@@ -52,20 +53,20 @@ Endpoint 0, Control OUT, 8 byte FIFO */
 #define Nr_eps 0 
 #define wTotalLength 9+9+(7*Nr_eps)
 
-/* Status codes */
+/* String Indexes */
 #define Lang_i     0   /* LanguageDescriptorIndex */
 #define Manu_i     1   /* ManufacturerStringIndex */
 #define Prod_i     2   /* ProductStringIndex */
 #define Seri_i     3   /* SerialNumberStringIndex */
 #define Intf_i     2   /* InterfaceStringIndex */
 
-/* base functions */
+/* Base functions */
 void usb_init_device(void);
-void usb_init_endpoint(uint8_t nu,uint8_t ty,uint8_t di,uint8_t si,uint8_t ba);
+void usb_init_endpoint(uint8_t nu, uint8_t ty, uint8_t di, uint8_t si, uint8_t ba);
 
-/* functions for  enumeration */
+/* Functions for enumeration */
 void usb_ep0_setup(void);
-void usb_send_descriptor(uint8_t de[] ,uint8_t db);
+void usb_send_descriptor(const uint8_t* descriptor, uint8_t db);
 
 extern uint8_t display;
 
