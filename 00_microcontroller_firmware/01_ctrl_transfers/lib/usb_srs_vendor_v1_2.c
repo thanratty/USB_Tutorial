@@ -76,10 +76,10 @@ ISR(USB_COM_vect)
  */
 void usb_init_device(void)
 {
-    UHWCON = (1<<UVREGE);   /* Enable USB Pad regulator */
-    USBCON = ((1<<USBE) | (1<<FRZCLK) | (1<<OTGPADE)); /* Enable USB power */
+    UHWCON = (1<<UVREGE);                               /* Enable USB Pad regulator */
+    USBCON = ((1<<USBE) | (1<<FRZCLK) | (1<<OTGPADE));  /* Enable USB power */
 
-    USBCON &= ~(1<<FRZCLK); /* Toggle FRZCLK to get WAKEUP IRQ */
+    USBCON &= ~(1<<FRZCLK);                             /* Toggle FRZCLK to get WAKEUP IRQ */
     USBCON |= (1<<FRZCLK);
 
     /* Configure the PLL */
@@ -141,42 +141,42 @@ void usb_ep0_setup(void)
 
     /*** Device Descriptor ***/
     static const uint8_t PROGMEM dev_des[] = {
-        18,       /* bLength = 18 (0x12), descriptor length in bytest */  
-        0x01,     /* bDescriptorType = 0x01, Descriptor ID = 1 -> Device descriptor */
-        0x10,0x01,/* bcdUSB = 0x0200, USB_Spec2_0 */
-        0x00,     /* bDeviceClass = 0x00, class code defined on interface level */
-        0x00,     /* bDeviceSubClass = 0x00 */
-        0x00,     /* bDeviceProtocoll = 0x00 */
-        Ep0_fs,   /* bMaxPacketSize0 = EP0FS, max. package size EP0 (here 8 B) */
-        0xeb,0x03,/* idVendor = 0x03eb, Atmel Code given by usb.org */
-        0x01,0x00,/* idProduct = 0x0001, Produkt ID */
-        0x01,0x00,/* bcdDevice = 0x0100, Release number device */
-        Manu_i,   /* iManufacturer = Index for string-descriptor manufacturer */
-        Prod_i,   /* iProduct = Index for string-descriptor product */
-        Seri_i,   /* iSerialNumber = Index for string-descriptor serial number */
-        0x01      /* bNumConfigurations = 1, Number of available configurations */
+        18,                     /* bLength = 18 (0x12), descriptor length in bytest */  
+        0x01,                   /* bDescriptorType = 0x01, Descriptor ID = 1 -> Device descriptor */
+        0x10,0x01,              /* bcdUSB = 0x0200, USB_Spec2_0 */
+        0x00,                   /* bDeviceClass = 0x00, class code defined on interface level */
+        0x00,                   /* bDeviceSubClass = 0x00 */
+        0x00,                   /* bDeviceProtocoll = 0x00 */
+        Ep0_fs,                 /* bMaxPacketSize0 = EP0FS, max. package size EP0 (here 8 B) */
+        MY_VID_LO,MY_VID_HI,    /* idVendor */
+        MY_PID_LO,MY_PID_HI,    /* idProduct */
+        0x01,0x00,              /* bcdDevice = 0x0100, Release number device */
+        Manu_i,                 /* iManufacturer = Index for string-descriptor manufacturer */
+        Prod_i,                 /* iProduct = Index for string-descriptor product */
+        Seri_i,                 /* iSerialNumber = Index for string-descriptor serial number */
+        0x01                    /* bNumConfigurations = 1, Number of available configurations */
     };
 
     /*** Configurations Descriptor ***/
     static const uint8_t PROGMEM conf_des[] =  {
-        9,        /* bLength = 0x09, descriptor length in bytes */
-        0x02,     /* bDescriptorType = 0x02, Descriptor ID = 2 -> Configuration descriptor */
+        9,                      /* bLength = 0x09, descriptor length in bytes */
+        0x02,                   /* bDescriptorType = 0x02, Descriptor ID = 2 -> Configuration descriptor */
         low(wTotalLength),high(wTotalLength),  /* wTotalLength, length of  Configuration */
-        0x01,     /* bNumInterfaces = 1 */
-        0x01,     /* bConfigurationValue = 1, must not be 0 */
-        0,        /* iConfiguration = 0, index for str.-descriptor configuration */
-        0x80,     /* bmAttributes = 0x80,bus-powered, no remote wakeup Bit 7=1 */ 
-        250,      /* MaxPower = 250(dezimal), means 250*2mA = 500mA */ 
+        0x01,                   /* bNumInterfaces = 1 */
+        0x01,                   /* bConfigurationValue = 1, must not be 0 */
+        0,                      /* iConfiguration = 0, index for str.-descriptor configuration */
+        0x80,                   /* bmAttributes = 0x80,bus-powered, no remote wakeup Bit 7=1 */ 
+        250,                    /* MaxPower = 250(dezimal), means 250*2mA = 500mA */ 
         /*** Interface Descriptor ***/
-        9,        /* bLength = 0x09, length of descriptor in bytes */
-        0x04,     /* bDescriptorType = 0x04, descriptor ID = 4 -> Interface descriptor*/
-        0,        /* bInterfaceNumber = 0; */
-        0,        /* bAlternateSetting = 0; */
-        Nr_eps,   /* bNumEndpoints = USB_Endpoints; */
-        0xFF,     /* bInterfaceClass = 0xFF, classcode: custome (0xFF) */
-        0xFF,     /* bInterfaceSubClass = 0xFF, subclasscode: custome (0xFF) */
-        0xFF,     /* bInterfaceProtocol = 0xFF, protocoll code: custome (0xFF) */
-        Intf_i,   /* iInterface = 0, Index for string descriptor interface */
+        9,                      /* bLength = 0x09, length of descriptor in bytes */
+        0x04,                   /* bDescriptorType = 0x04, descriptor ID = 4 -> Interface descriptor*/
+        0,                      /* bInterfaceNumber = 0; */
+        0,                      /* bAlternateSetting = 0; */
+        Nr_eps,                 /* bNumEndpoints = USB_Endpoints; */
+        0xFF,                   /* bInterfaceClass = 0xFF, classcode: custome (0xFF) */
+        0xFF,                   /* bInterfaceSubClass = 0xFF, subclasscode: custome (0xFF) */
+        0xFF,                   /* bInterfaceProtocol = 0xFF, protocoll code: custome (0xFF) */
+        Intf_i,                 /* iInterface = 0, Index for string descriptor interface */
         /* Endpoint descriptors */
     };                    
 
@@ -202,7 +202,7 @@ void usb_ep0_setup(void)
                     /* bString = Unicode Encoded String (16 Bit!)*/
         'T',0,'e',0,'s',0,'t',0,'d',0,'e',0,'v',0,'i',0,'c',0,'e',0
     };        
-
+    /*** Serial Number Descriptor ***/      
     /*** Serial Descriptor ***/      
     static const uint8_t PROGMEM seri_des[] = {
         10,         /* bLength = 0x12, length of descriptor in bytes */
@@ -212,7 +212,7 @@ void usb_ep0_setup(void)
     };
 
 
-    /* Add EP descriptors here... */
+    /* Add any EP descriptors here... */
 
     bmRequestType = UEDATX; 
     bRequest  = UEDATX; 
@@ -224,7 +224,7 @@ void usb_ep0_setup(void)
     wLength_h = UEDATX; 
     length = wLength_l + (wLength_h << 8);
 
-    CBI(UEINTX, RXSTPI); /* Ack received Setup package */
+    CBI(UEINTX, RXSTPI); /* ACK received Setup package */
                     
 /* bmRequestType bit definitions
 
@@ -331,14 +331,14 @@ Bit     Field
         switch(bRequest)
         {
             case 0x1:
-                /* Set new value to 7 segment display */
+                // Get new value from host for 7 segment display
                 display = wValue_l;
-                CBI(UEINTX,TXINI); /* Send OUT package (ZLP) and clear bank */
+                CBI(UEINTX,TXINI);              /* Send OUT package (ZLP) and clear bank */
                 while (!(UEINTX & (1<<TXINI))); /* wait for bank to be cleared */
                 break;
 
             case 0x2:
-                /* Return displayed value */
+                // Return current displayed value to host
                 UEDATX = display;
                 for(i=1 ; i<length ; i++)
                 {

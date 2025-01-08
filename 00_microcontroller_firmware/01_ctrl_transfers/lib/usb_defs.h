@@ -21,5 +21,12 @@
 #define     STRING_DESCRIPTOR           0x03
 
 
+// Use VID = 0x8477 and PID = 0x3118
+#define     MY_VID_HI                   0x84
+#define     MY_VID_LO                   0x77
+#define     MY_PID_HI                   0x31
+#define     MY_PID_LO                   0x18
+
+
 
 #endif
