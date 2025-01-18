@@ -24,10 +24,10 @@
 #include <stdbool.h>
 
 /* Macros to make program easier to read */
-#define CBI(adr,bit)    (adr &= ~(1<<bit)) /* Clear bit in SF-register (ASM) */
-#define SBI(adr,bit)    (adr |=  (1<<bit)) /* Set bit in SF-register (ASM) */
-#define low(x)   ((x) & 0xFF)
-#define high(x)  (((x)>>8) & 0xFF)
+#define CBI(adr,bitnum)    (adr &= ~(1<<bitnum)) /* Clear bit in SF-register (ASM) */
+#define SBI(adr,bitnum)    (adr |=  (1<<bitnum)) /* Set bit in SF-register (ASM) */
+#define LOW(x)   ((x) & 0xFF)
+#define HIGH(x)  (((x)>>8) & 0xFF)
 
 /* Prescaler for USB PLL */
 #define PLLPRE 0x10 /* Value for 16MHz crystal */

@@ -22,11 +22,20 @@
 
 
 // Use VID = 0x8477 and PID = 0x3118
-#define     MY_VID_HI                   0x84
-#define     MY_VID_LO                   0x77
-#define     MY_PID_HI                   0x31
-#define     MY_PID_LO                   0x18
+#define     MY_VID                      0x8477
+#define     MY_PID                      0x3118
 
 
+// Prepare some handy bit masks from bit numbers
+
+#define     UVREG_m         (1<<UVREGE)
+#define     USBE_m          (1<<USBE)
+#define     FRZCLK_m        (1<<FRZCLK)
+#define     OTGPADE_m       (1<<OTGPADE)
+#define     EORSTI_m        (1<<EORSTI)
+#define     PLOCK_m         (1<<PLOCK)
+#define     RXOUTI_m        (1<<RXOUTI)
+#define     TXINI_m         (1<<TXINI)
+#define     UVREGE_m        (1<<UVREGE)
 
 #endif
