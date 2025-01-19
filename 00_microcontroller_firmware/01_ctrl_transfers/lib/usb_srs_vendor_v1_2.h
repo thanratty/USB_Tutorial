@@ -47,11 +47,11 @@ Endpoint 0, Control OUT, 8 byte FIFO
 #define Ep0_ba 0    /* 1 Bank */
 #define Ep0_fs 8    
 
-#define wTotalLength 9+9+(7*Nr_eps)
+//#define wTotalLength 9+9+(7*Nr_eps)
 
 /* Number of Endpoints without EP0 */
 #define Nr_eps 0 
-#define wTotalLength 9+9+(7*Nr_eps)
+#define _wTotalLength (9+9+(7*Nr_eps))
 
 /* String Indexes */
 #define Lang_i     0   /* LanguageDescriptorIndex */
@@ -59,6 +59,7 @@ Endpoint 0, Control OUT, 8 byte FIFO
 #define Prod_i     2   /* ProductStringIndex */
 #define Seri_i     3   /* SerialNumberStringIndex */
 #define Intf_i     2   /* InterfaceStringIndex */
+#define MSOS_i      0xee        // MS WCID string descriptor
 
 /* Base functions */
 void usb_init_device(void);

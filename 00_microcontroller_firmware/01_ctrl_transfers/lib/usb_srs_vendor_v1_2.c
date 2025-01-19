@@ -23,6 +23,7 @@
 #include "usb_srs_vendor_v1_2.h"
 #include "usb_defs.h"
 
+#define U16TOBYTES(x) (x) & 0xFF, (x) >> 8
 
 
 /*
@@ -46,7 +47,7 @@ uint8_t button_counter = 0;
     static const uint8_t PROGMEM dev_des[] = {
         18,                     /* bLength = 18 (0x12), descriptor length in bytest */  
         0x01,                   /* bDescriptorType = 0x01, Descriptor ID = 1 -> Device descriptor */
-        0x10,0x01,              /* bcdUSB = 0x0200, USB_Spec2_0 */
+        0x00,0x02,              /* bcdUSB = 0x0200, USB_Spec2_0 */
         0x00,                   /* bDeviceClass = 0x00, class code defined on interface level */
         0x00,                   /* bDeviceSubClass = 0x00 */
         0x00,                   /* bDeviceProtocoll = 0x00 */
@@ -66,8 +67,8 @@ uint8_t button_counter = 0;
     static const uint8_t PROGMEM conf_des[] =  {
         9,                      /* bLength = 0x09, descriptor length in bytes */
         0x02,                   /* bDescriptorType = 0x02, Descriptor ID = 2 -> Configuration descriptor */
-        LOW(wTotalLength),      /* wTotalLength, length of  Configuration */
-        HIGH(wTotalLength),
+        LOW(_wTotalLength),     /* wTotalLength, length of  Configuration */
+        HIGH(_wTotalLength),
         0x01,                   /* bNumInterfaces = 1 */
         0x01,                   /* bConfigurationValue = 1, must not be 0 */
         0,                      /* iConfiguration = 0, index for str.-descriptor configuration */
@@ -123,7 +124,97 @@ uint8_t button_counter = 0;
 
 
 
-   
+static const uint8_t PROGMEM MS_OS_String_descriptor[] = 
+{
+    0x12,                   // bLength
+    0x03,                   // bType = string
+
+    // MSFT100
+    'M', 0x00, 'S', 0x00, 'F', 0x00, 'T', 0x00, '1', 0x00, '0', 0x00, '0', 0x00,
+
+    0x33,                   // bVendorCode
+    0x00
+};
+
+
+
+
+#define     MS_BOS_REQUEST      0x55
+
+static const uint8_t PROGMEM BOS_descriptor[33] = {
+    5,                                          // bLength
+    15,                                         // bRequestType
+    U16TOBYTES(sizeof(sMS_BOS_DESCRIPTOR)),     // wTotalLength
+    1,                                          // # platform capability descriptors. Just 1 needed for WinUSB
+
+    0x1C,                                       // bLength - 28 bytes
+    0x10,                                       // bDescriptorType - 16
+    0x05,                                       // bDevCapability – 5 for Platform Capability
+    0x00,                                       // bReserved - 0
+
+    0xDF, 0x60, 0xDD, 0xD8,                     // MS GUID
+    0x89, 0x45, 0xC7, 0x4C,
+    0x9C, 0xD2, 0x65, 0x9D,
+    0x9E, 0x64, 0x8A, 0x9F,
+
+    0x00, 0x00, 0x03, 0x06,                     // dwWinVersion. 0x06030000 for Win 8.1 and above
+
+    U16TOBYTES(158),                            // wOSDescLen
+    MS_BOS_REQUEST,                             // bRequest ID used to get MS_OS_DESC_SET_HEADER
+    0x00                                        // bSendRequest / alt enum code ???
+};
+
+
+
+
+
+
+static const uint8_t PROGMEM MS_OS_DESC_SET[158] = {
+    U16TOBYTES(10),                                         // wLength
+    U16TOBYTES(MS_OS_20_SET_HEADER_DESCRIPTOR),             // wDescriptorType
+
+    0x00, 0x00, 0x03, 0x06,                                 // dwWindowsVersion. 0x06030000 for Win 8.1 and above
+    U16TOBYTES(10 + sizeof(sMS_FUNC_SUBSET_HEADER)),        // 10 + sizeof(sMS_FUNC_SUBSET_HEADER) ???
+
+    // MS_COMP_ID_FEAT_DESC 
+
+    U16TOBYTES(20),                                         // wLength
+    U16TOBYTES(MS_OS_20_FEATURE_COMPATBLE_ID),              // wDescriptorType
+    'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,               // 8 byte string
+    
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,         // 8 byte sub-compatible ID string
+
+    // MS_REG_PROP_DESC_GUID 
+
+    U16TOBYTES(8),                                          // wLength sizeof(struct MS_REG_PROP_DESC_GUID)
+    U16TOBYTES(MS_OS_20_FEATURE_REG_PROPERTY),              // wDescriptorType
+    U16TOBYTES(7),                                          // Type 7 is UTF-16 NULL terminated
+
+    U16TOBYTES(40),                                         // PropertyName string length below
+    'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 
+    'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00, 'r', 0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 
+    'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00,
+    0,0,
+
+    U16TOBYTES(80),                                         // PropertyData length (Size of GUID string "{AB12AB12-AB12-AB12-AB12-AB12AB12AB12}")
+    '{', 0x00, 
+    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
+    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
+    '-', 0x00, 
+    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
+    '-', 0x00,
+    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
+    '-', 0x00, 
+    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
+    '-', 0x00, 
+    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
+    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
+    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
+    '}', 0x00, 
+    0, 0,
+};
+
+
 
 
 
@@ -298,6 +389,11 @@ Bit     Field
                 // Descriptor type
                 switch (wValue_h)
                 {
+                    case BOS_DESCRIPTOR:
+                        des_bytes = pgm_read_byte(&BOS_descriptor[0]);	      
+                        usb_send_descriptor(BOS_descriptor, des_bytes);         
+                        break;
+
                     case DEVICE_DESCRIPTOR:
                         des_bytes = pgm_read_byte(&dev_des[0]);	      
                         usb_send_descriptor(dev_des, des_bytes);         
@@ -305,8 +401,8 @@ Bit     Field
 
                     case CONFIGURATION_DESCRIPTOR:
                         des_bytes = wLength_l;
-                        if (wLength_h || (wLength_l > wTotalLength) || (wLength_l == 0)) 
-                            des_bytes = wTotalLength;
+                        if (wLength_h || (wLength_l > _wTotalLength) || (wLength_l == 0)) 
+                            des_bytes = _wTotalLength;
                         usb_send_descriptor(conf_des, des_bytes);
                         break;
 
@@ -329,6 +425,10 @@ Bit     Field
                             case Seri_i:
                                 des_bytes = pgm_read_byte(&seri_des[0]);
                                 usb_send_descriptor(seri_des, des_bytes);
+                                break;              
+                            case MSOS_i:
+                                des_bytes = pgm_read_byte(&MS_OS_String_descriptor[0]);
+                                usb_send_descriptor(MS_OS_String_descriptor, des_bytes);
                                 break;              
                             default:
                                 break;
@@ -359,6 +459,11 @@ Bit     Field
     {
         switch(bRequest)
         {
+            case MS_BOS_REQUEST:
+                des_bytes = pgm_read_byte(&MS_OS_DESC_SET[0]);
+                usb_send_descriptor(seri_des, des_bytes);
+                break;              
+
             case VENDOR_CMD_SET_COUNTER:
                 // Update SOS button counter with value from host
                 button_counter = wValue_l;

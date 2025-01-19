@@ -8,4 +8,4 @@ all:
 	avr-objcopy -O ihex ${TARGET}.elf ${TARGET}.hex
 
 clean:
-	rm -rf *.hex *.elf *.map
+	rm -rf *.hex *.elf *.map *.s *.lst
