@@ -13,11 +13,11 @@
 
 
 
-#define		RX_LED_ON		do { RX_LED_PORT |=  (1 << RX_LED_BIT); } while(0)
-#define		RX_LED_OFF		do { RX_LED_PORT &= ~(1 << RX_LED_BIT); } while(0)
+#define		RX_LED_OFF		do { RX_LED_PORT |=  (1 << RX_LED_BIT); } while(0)
+#define		RX_LED_ON		do { RX_LED_PORT &= ~(1 << RX_LED_BIT); } while(0)
 
-#define		TX_LED_ON		do { TX_LED_PORT |=  (1 << TX_LED_BIT); } while(0)
-#define		TX_LED_OFF		do { TX_LED_PORT &= ~(1 << TX_LED_BIT); } while(0)
+#define		TX_LED_OFF		do { TX_LED_PORT |=  (1 << TX_LED_BIT); } while(0)
+#define		TX_LED_ON		do { TX_LED_PORT &= ~(1 << TX_LED_BIT); } while(0)
 
 #define     RX_LED_TOGGLE   do { RX_LED_PORT ^= (1 << RX_LED_BIT); } while(0)
 #define     TX_LED_TOGGLE   do { TX_LED_PORT ^= (1 << TX_LED_BIT); } while(0)

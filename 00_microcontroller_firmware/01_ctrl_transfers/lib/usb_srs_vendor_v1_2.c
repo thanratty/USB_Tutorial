@@ -22,19 +22,34 @@
 
 #include "usb_srs_vendor_v1_2.h"
 #include "usb_defs.h"
+#include "usb_descriptors.h"
+#include "usb_winusb.h"
+
+#include "leds.h"
+#include "uart.h"
+#include "phex.h"
 
 #define U16TOBYTES(x) (x) & 0xFF, (x) >> 8
 
 
-/*
- * Our private commands sent through the control endpoint.
- */
-#define     VENDOR_CMD_SET_COUNTER      1
-#define     VENDOR_CMD_GET_COUNTER      2
+
+#define     DB_SERIAL(x)        do { uart1_putc(x); } while(0)
+
 
 
 // Count # of SOS button presses here
 uint8_t button_counter = 0;
+
+bool leds_on = true;
+
+
+
+uint8_t bmRequestType;
+uint8_t bRequest;
+uint8_t wValue_l,  wValue_h;
+uint8_t wIndex_l,  wIndex_h;
+uint8_t wLength_l, wLength_h;
+uint16_t wLength, wValue, wIndex;
 
 
 
@@ -43,178 +58,186 @@ uint8_t button_counter = 0;
      * Declare the USB descriptors in flash memory
      */
 
-    /*** Device Descriptor ***/
-    static const uint8_t PROGMEM dev_des[] = {
-        18,                     /* bLength = 18 (0x12), descriptor length in bytest */  
-        0x01,                   /* bDescriptorType = 0x01, Descriptor ID = 1 -> Device descriptor */
-        0x00,0x02,              /* bcdUSB = 0x0200, USB_Spec2_0 */
-        0x00,                   /* bDeviceClass = 0x00, class code defined on interface level */
-        0x00,                   /* bDeviceSubClass = 0x00 */
-        0x00,                   /* bDeviceProtocoll = 0x00 */
-        Ep0_fs,                 /* bMaxPacketSize0 = EP0FS, max. package size EP0 (here 8 B) */
-        LOW(MY_VID),            /* idVendor */
-        HIGH(MY_VID),
-        LOW(MY_PID),            /* idProduct */
-        HIGH(MY_PID),
-        0x01,0x00,              /* bcdDevice = 0x0100, Release number device */
-        Manu_i,                 /* iManufacturer = Index for string-descriptor manufacturer */
-        Prod_i,                 /* iProduct = Index for string-descriptor product */
-        Seri_i,                 /* iSerialNumber = Index for string-descriptor serial number */
-        0x01                    /* bNumConfigurations = 1, Number of available configurations */
+    // Device Descriptor
+    static const uint8_t PROGMEM dev_des[18] = {
+        18,                                     /* bLength = 18 */  
+        USB_DEVICE_DESCRIPTOR,                  /* bDescriptorType = 0x01, Descriptor ID = 1 -> Device descriptor */
+        U16TOBYTES(0x0200),                     /* bcdUSB = 0x0200, USB_Spec2_0 */
+        0x00,                                   /* bDeviceClass = 0x00, class code defined on interface level */
+        0x00,                                   /* bDeviceSubClass = 0x00 */
+        0x00,                                   /* bDeviceProtocoll = 0x00 */
+        Ep0_fs,                                 /* bMaxPacketSize0 = EP0FS, max. package size EP0 (here 8 B) */
+        U16TOBYTES(MY_VID),                     /* idVendor */
+        U16TOBYTES(MY_PID),                     /* idProduct */
+        0x01,0x00,                              /* bcdDevice = 0x0100, Release number device */
+        Manu_i,                                 /* iManufacturer = Index for string-descriptor manufacturer */
+        Prod_i,                                 /* iProduct = Index for string-descriptor product */
+        Seri_i,                                 /* iSerialNumber = Index for string-descriptor serial number */
+        0x01                                    /* bNumConfigurations = 1, Number of available configurations */
     };
 
-    /*** Configurations Descriptor ***/
-    static const uint8_t PROGMEM conf_des[] =  {
-        9,                      /* bLength = 0x09, descriptor length in bytes */
-        0x02,                   /* bDescriptorType = 0x02, Descriptor ID = 2 -> Configuration descriptor */
-        LOW(_wTotalLength),     /* wTotalLength, length of  Configuration */
-        HIGH(_wTotalLength),
-        0x01,                   /* bNumInterfaces = 1 */
-        0x01,                   /* bConfigurationValue = 1, must not be 0 */
-        0,                      /* iConfiguration = 0, index for str.-descriptor configuration */
-        0x80,                   /* bmAttributes = 0x80,bus-powered, no remote wakeup Bit 7=1 */ 
-        250,                    /* MaxPower = 250(dezimal), means 250*2mA = 500mA */ 
+    // Configurations Descriptor
+    static const uint8_t PROGMEM conf_des[18] =  {
+        9,                                      /* bLength = 0x09, descriptor length in bytes */
+        USB_CONFIGURATION_DESCRIPTOR,           /* bDescriptorType = 0x02, Descriptor ID = 2 -> Configuration descriptor */
+        U16TOBYTES(18),                         /* wTotalLength = Config + Interface desc len, 9+9 */
+        1,                                      /* bNumInterfaces = 1 */
+        1,                                      /* bConfigurationValue = 1, must not be 0 */
+        0,                                      /* iConfiguration = 0, index for str.-descriptor configuration */
+        USB_ATTRIBUTE_BUS_POWERED,              /* bmAttributes = 0x80,bus-powered, no remote wakeup Bit 7=1 */ 
+        250,                                    /* MaxPower = 250(dezimal), means 250*2mA = 500mA */ 
 
-    /*** Interface Descriptor ***/
-        9,                      /* bLength = 0x09, length of descriptor in bytes */
-        0x04,                   /* bDescriptorType = 0x04, descriptor ID = 4 -> Interface descriptor*/
-        0,                      /* bInterfaceNumber = 0; */
-        0,                      /* bAlternateSetting = 0; */
-        Nr_eps,                 /* bNumEndpoints = USB_Endpoints; */
-        0xFF,                   /* bInterfaceClass = 0xFF, classcode: custome (0xFF) */
-        0xFF,                   /* bInterfaceSubClass = 0xFF, subclasscode: custome (0xFF) */
-        0xFF,                   /* bInterfaceProtocol = 0xFF, protocoll code: custome (0xFF) */
-        Intf_i,                 /* iInterface = 0, Index for string descriptor interface */
-        /* Endpoint descriptors */
+    // Interface Descriptor
+        9,                                      /* bLength = 0x09, length of descriptor in bytes */
+        USB_INTERFACE_DESCRIPTOR,               /* bDescriptorType = 0x04, descriptor ID = 4 -> Interface descriptor*/
+        0,                                      /* bInterfaceNumber = 0; */
+        0,                                      /* bAlternateSetting = 0; */
+        Nr_eps,                                 /* bNumEndpoints = USB_Endpoints; */
+        0xFF,                                   /* bInterfaceClass = 0xFF, classcode: custome (0xFF) */
+        0xFF,                                   /* bInterfaceSubClass = 0xFF, subclasscode: custome (0xFF) */
+        0xFF,                                   /* bInterfaceProtocol = 0xFF, protocoll code: custome (0xFF) */
+        Intf_i,                                 /* iInterface = 0, Index for string descriptor interface */
+
+        // Endpoint descriptors after here
     };                    
 
+
     /*** Language Descriptor ***/      
-    static const uint8_t PROGMEM lang_des[] = {
-        4,        /* bLength = 0x04, length of descriptor in bytes */
-        0x03,     /* bDescriptorType = 0x03, Descriptor ID = 3 -> String descriptor */
-        0x09,0x04 /* wLANGID[0] = 0x0409 = English USA (Supported Lang. Code 0) */
+    static const uint8_t PROGMEM lang_des[4] = {
+        4,                                      /* bLength = 0x04, length of descriptor in bytes */
+        USB_STRING_DESCRIPTOR,                  /* bDescriptorType = 0x03, Descriptor ID = 3 -> String descriptor */
+        0x09,0x04                               /* wLANGID[0] = 0x0409 = English USA (Supported Lang. Code 0) */
     };
 
     /*** Manufacturer Descriptor ***/          
-    static const uint8_t PROGMEM manu_des[] = {
-        30,       /* bLength = 0x04, length of descriptor in bytes */
-        0x03,     /* bDescriptorType = 0x03, Descriptor ID = 3 -> String descriptor */
-                  /* bString = Unicode Encoded String (16 Bit!) */
+    static const uint8_t PROGMEM manu_des[30] = {
+        30,                                     /* bLength = 0x04, length of descriptor in bytes */
+        USB_STRING_DESCRIPTOR,                  /* bDescriptorType = 0x03, Descriptor ID = 3 -> String descriptor */
+                                                /* bString = Unicode Encoded String (16 Bit!) */
         'P',0, 'i',0, 'n',0, 'k',0, ' ',0, 'O',0, 'b',0, 'o',0, 'e',0, ' ',0, 'L',0, 't',0, 'd',0, '.',0
     };    
 
     /*** Product Descriptor ***/       
-    static const uint8_t PROGMEM prod_des[] = {
-        26,         /* bLength = 0x22, length of descriptor in bytes */
-        0x03,       /* bDescriptorType = 0x03, Descriptor ID = 3 -> String descriptor */
-                    /* bString = Unicode Encoded String (16 Bit!)*/
+    static const uint8_t PROGMEM prod_des[26] = {
+        26,                     /* bLength = 0x22, length of descriptor in bytes */
+        USB_STRING_DESCRIPTOR,         /* bDescriptorType = 0x03, Descriptor ID = 3 -> String descriptor */
+                                /* bString = Unicode Encoded String (16 Bit!)*/
         'S',0,'p',0,'a',0,'f',0,'f',0,' ',0,'C',0,'a',0,'n',0,'n',0,'o',0,'n',0
     };        
+
     /*** Serial Number Descriptor ***/      
-    /*** Serial Descriptor ***/      
-    static const uint8_t PROGMEM seri_des[] = {
-        10,         /* bLength = 0x12, length of descriptor in bytes */
-        0x03,       /* bDescriptorType = 0x03, Descriptor ID = 3 -> String descriptor */
-                    /* bString = Unicode Encoded String (16 Bit!) */
+    static const uint8_t PROGMEM seri_des[10] = {
+        10,                     /* bLength = 0x12, length of descriptor in bytes */
+        USB_STRING_DESCRIPTOR,         /* bDescriptorType = 0x03, Descriptor ID = 3 -> String descriptor */
+                                /* bString = Unicode Encoded String (16 Bit!) */
         '1',0,'2',0,'3',0,'4',0,
     };
 
-    /* Add any EP descriptors here... */
+    // Reference: https://learn.microsoft.com/en-us/windows-hardware/drivers/network/mb-interface-model-supplement
+/* 
+    static const uint8_t PROGMEM MS_OS_String_des[18] = 
+    {
+        18,                         // bLength (checked OK)
+        USB_STRING_DESCRIPTOR,             // bType = string
+
+        // MSFT100
+        'M', 0x00, 'S', 0x00, 'F', 0x00, 'T', 0x00, '1', 0x00, '0', 0x00, '0', 0x00,
+
+        0x33,                       // bVendorCode
+        0x00                        // Pad field
+    };
+
+
+ */
 
 
 
-
-static const uint8_t PROGMEM MS_OS_String_descriptor[] = 
+const alignas(4) usb_bos_hierarchy_t usb_bos_hierarchy =
 {
-    0x12,                   // bLength
-    0x03,                   // bType = string
+  .bos =
+  {
+    .bLength             = sizeof(usb_bos_descriptor_t),
+    .bDescriptorType     = USB_BOS_DESCRIPTOR,
+    .wTotalLength        = sizeof(usb_bos_hierarchy_t),
+    .bNumDeviceCaps      = 1,
+  },
 
-    // MSFT100
-    'M', 0x00, 'S', 0x00, 'F', 0x00, 'T', 0x00, '1', 0x00, '0', 0x00, '0', 0x00,
+  .winusb =
+  {
+    .bLength                = sizeof(usb_winusb_capability_descriptor_t),
+    .bDescriptorType        = USB_DEVICE_CAPABILITY_DESCRIPTOR,
+    .bDevCapabilityType     = USB_DEVICE_CAPABILITY_PLATFORM,
+    .bReserved              = 0,
+    .PlatformCapabilityUUID = USB_WINUSB_PLATFORM_CAPABILITY_ID,
+    .dwWindowsVersion       = USB_WINUSB_WINDOWS_VERSION,
+    .wMSOSDescriptorSetTotalLength = sizeof(usb_msos_descriptor_set_t),
+    .bMS_VendorCode         = USB_WINUSB_VENDOR_CODE,
+    .bAltEnumCode           = 0,
+  },
+};
 
-    0x33,                   // bVendorCode
-    0x00
+
+
+const alignas(4) usb_msos_descriptor_set_t usb_msos_descriptor_set =
+{
+  .header =
+  {
+    .wLength             = sizeof(usb_winusb_set_header_descriptor_t),
+    .wDescriptorType     = USB_WINUSB_SET_HEADER_DESCRIPTOR,
+    .dwWindowsVersion    = USB_WINUSB_WINDOWS_VERSION,
+    .wDescriptorSetTotalLength = sizeof(usb_msos_descriptor_set_t),
+  },
+
+  .subset =
+  {
+    .header = {
+      .wLength           = sizeof(usb_winusb_subset_header_function_t),
+      .wDescriptorType   = USB_WINUSB_SUBSET_HEADER_FUNCTION,
+      .bFirstInterface   = USB_INTF_BULK,
+      .bReserved         = 0,
+      .wSubsetLength     = sizeof(usb_msos_descriptor_subset_t),
+    },
+
+    .comp_id =
+    {
+      .wLength           = sizeof(usb_winusb_feature_compatble_id_t),
+      .wDescriptorType   = USB_WINUSB_FEATURE_COMPATBLE_ID,
+      .CompatibleID      = { 'W', 'I', 'N', 'U', 'S', 'B', '\0', '\0' },
+      .SubCompatibleID   = { 0 },
+    },
+
+    .property =
+    {
+      .wLength             = sizeof(usb_winusb_feature_reg_property_guids_t),
+      .wDescriptorType     = USB_WINUSB_FEATURE_REG_PROPERTY,
+      .wPropertyDataType   = USB_WINUSB_PROPERTY_DATA_TYPE_MULTI_SZ,
+      .wPropertyNameLength = sizeof(usb_msos_descriptor_set.subset.property.PropertyName),
+      .PropertyName        = {
+          'D',0,'e',0,'v',0,'i',0,'c',0,'e',0,'I',0,'n',0,'t',0,'e',0,'r',0,'f',0,'a',0,'c',0,'e',0,
+          'G',0,'U',0,'I',0,'D',0,'s',0, 0, 0 },
+      .wPropertyDataLength = sizeof(usb_msos_descriptor_set.subset.property.PropertyData),
+      .PropertyData        = {
+          '{',0,'C',0,'D',0,'B',0,'3',0,'B',0,'5',0,'A',0,'D',0,'-',0,'2',0,'9',0,'3',0,'B',0,'-',0,
+          '4',0,'6',0,'6',0,'3',0,'-',0,'A',0,'A',0,'3',0,'6',0,'-',0,'1',0,'A',0,'A',0,'E',0,'4',0,
+          '6',0,'4',0,'6',0,'3',0,'7',0,'7',0,'6',0,'}',0, 0, 0,
+          0, 0 },
+    },
+  },
 };
 
 
 
 
-#define     MS_BOS_REQUEST      0x55
 
-static const uint8_t PROGMEM BOS_descriptor[33] = {
-    5,                                          // bLength
-    15,                                         // bRequestType
-    U16TOBYTES(sizeof(sMS_BOS_DESCRIPTOR)),     // wTotalLength
-    1,                                          // # platform capability descriptors. Just 1 needed for WinUSB
-
-    0x1C,                                       // bLength - 28 bytes
-    0x10,                                       // bDescriptorType - 16
-    0x05,                                       // bDevCapability – 5 for Platform Capability
-    0x00,                                       // bReserved - 0
-
-    0xDF, 0x60, 0xDD, 0xD8,                     // MS GUID
-    0x89, 0x45, 0xC7, 0x4C,
-    0x9C, 0xD2, 0x65, 0x9D,
-    0x9E, 0x64, 0x8A, 0x9F,
-
-    0x00, 0x00, 0x03, 0x06,                     // dwWinVersion. 0x06030000 for Win 8.1 and above
-
-    U16TOBYTES(158),                            // wOSDescLen
-    MS_BOS_REQUEST,                             // bRequest ID used to get MS_OS_DESC_SET_HEADER
-    0x00                                        // bSendRequest / alt enum code ???
-};
-
-
-
-
-
-
-static const uint8_t PROGMEM MS_OS_DESC_SET[158] = {
-    U16TOBYTES(10),                                         // wLength
-    U16TOBYTES(MS_OS_20_SET_HEADER_DESCRIPTOR),             // wDescriptorType
-
-    0x00, 0x00, 0x03, 0x06,                                 // dwWindowsVersion. 0x06030000 for Win 8.1 and above
-    U16TOBYTES(10 + sizeof(sMS_FUNC_SUBSET_HEADER)),        // 10 + sizeof(sMS_FUNC_SUBSET_HEADER) ???
-
-    // MS_COMP_ID_FEAT_DESC 
-
-    U16TOBYTES(20),                                         // wLength
-    U16TOBYTES(MS_OS_20_FEATURE_COMPATBLE_ID),              // wDescriptorType
-    'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,               // 8 byte string
-    
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,         // 8 byte sub-compatible ID string
-
-    // MS_REG_PROP_DESC_GUID 
-
-    U16TOBYTES(8),                                          // wLength sizeof(struct MS_REG_PROP_DESC_GUID)
-    U16TOBYTES(MS_OS_20_FEATURE_REG_PROPERTY),              // wDescriptorType
-    U16TOBYTES(7),                                          // Type 7 is UTF-16 NULL terminated
-
-    U16TOBYTES(40),                                         // PropertyName string length below
-    'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 
-    'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00, 'r', 0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 
-    'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00,
-    0,0,
-
-    U16TOBYTES(80),                                         // PropertyData length (Size of GUID string "{AB12AB12-AB12-AB12-AB12-AB12AB12AB12}")
-    '{', 0x00, 
-    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
-    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
-    '-', 0x00, 
-    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
-    '-', 0x00,
-    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
-    '-', 0x00, 
-    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
-    '-', 0x00, 
-    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
-    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
-    'A', 0x00, 'B', 0x00, '1', 0x00, '8', 0x00, 
-    '}', 0x00, 
-    0, 0,
-};
-
-
+void prequest( void )
+{
+    phexbyte_sp(bmRequestType);
+    phexbyte_sp(bRequest);
+    phexword_sp(wValue);
+    phexword_sp(wIndex);
+    phexword_sp(wLength);
+    pcrlf();
+}
 
 
 
@@ -256,8 +279,9 @@ ISR(USB_COM_vect)
 
         /* Expand here for other endpoints */
 
-        default: 
-                break;
+        default:
+            DB_SERIAL('x');
+            break;
     }
 }
 
@@ -320,15 +344,7 @@ void usb_init_endpoint( uint8_t number,
  */
 void usb_ep0_setup(void)
 {
-    uint8_t bmRequestType;
-    uint8_t bRequest;
-    uint8_t wValue_l,  wValue_h;
-    uint8_t wIndex_l,  wIndex_h;
-    uint8_t wLength_l, wLength_h;
     uint8_t des_bytes;
-    uint16_t length;
-    int i;
-
 
     bmRequestType = UEDATX; 
     bRequest  = UEDATX; 
@@ -338,7 +354,10 @@ void usb_ep0_setup(void)
     wIndex_h  = UEDATX;
     wLength_l = UEDATX; 
     wLength_h = UEDATX; 
-    length = wLength_l + (wLength_h << 8);
+
+    wLength = (wLength_h << 8) | wLength_l;
+    wValue  = (wValue_h << 8)  | wValue_l;
+    wIndex  = (wIndex_h << 8)  | wIndex_l;
 
     CBI(UEINTX, RXSTPI);    // ACK received Setup package
 
@@ -361,144 +380,165 @@ Bit     Field
             4..31 = Reserved
 */
 
-    // b[6:5] = 00, standard request type
-    if ((bmRequestType & 0x60) == 0)
+    switch (USB_CMD_VALUE(bRequest,bmRequestType))
     {
-        switch (bRequest)
-        {
-            // GET_STATUS, 3 Phases
-            case GET_STATUS:
-                UEDATX = 0;                         // Send back 16 Bit status -> Not self powered, no wakeup, not halted
-                UEDATX = 0;
-                CBI(UEINTX,TXINI);                  // Send data (ACK) and clear FIFO
-                while (!(UEINTX & RXOUTI_m));       // Wait for ZLP from host
-                CBI(UEINTX,RXOUTI);                 // Clear flag
-                break;
+        // GET_STATUS, 3 Phases
+        case USB_CMD(IN, DEVICE, STANDARD, GET_STATUS):
+            DB_SERIAL('A');
+            UEDATX = 0;                         // Send back 16 Bit status -> Not self powered, no wakeup, not halted
+            UEDATX = 0;
+            CBI(UEINTX,TXINI);                  // Send data (ACK) and clear FIFO
+            while (!(UEINTX & RXOUTI_m));       // Wait for ZLP from host
+            CBI(UEINTX,RXOUTI);                 // Clear flag
+            break;
 
-            // SET_ADDRESS, 2 Phases (no data phase )
-            case SET_ADDRESS:
-                UDADDR = (wValue_l & 0x7F);         // Save address at UADD (ADDEN = 0)
-                CBI(UEINTX,TXINI);                  // Send OUT package (ZLP) and clear bank
-                while (!(UEINTX & TXINI_m));        // Wait for bank to be cleared
-                SBI(UDADDR, ADDEN);                 // Enable address
-                break;
+        case USB_CMD(IN, INTERFACE, STANDARD, GET_STATUS):
+            DB_SERIAL('B');
+            UEDATX = 0;                         // Send back 16 Bit status -> Not self powered, no wakeup, not halted
+            UEDATX = 0;
+            CBI(UEINTX,TXINI);                  // Send data (ACK) and clear FIFO
+            while (!(UEINTX & RXOUTI_m));       // Wait for ZLP from host
+            CBI(UEINTX,RXOUTI);                 // Clear flag
+            break;
 
-            // GET_DESCRIPTOR, 3 Phase Transfer
-            case GET_DESCRIPTOR:
+        // SET_ADDRESS, 2 Phases (no data phase )
+        case USB_CMD(OUT, DEVICE, STANDARD, SET_ADDRESS):
+            DB_SERIAL('C');
+            UDADDR = (wValue_l & 0x7F);         // Save address at UADD (ADDEN = 0)
+            CBI(UEINTX,TXINI);                  // Send OUT package (ZLP) and clear bank
+            while (!(UEINTX & TXINI_m));        // Wait for bank to be cleared
+            SBI(UDADDR, ADDEN);                 // Enable address
+            break;
+
+        // GET_DESCRIPTOR, 3 Phase Transfer
+        case USB_CMD(IN, DEVICE, STANDARD, GET_DESCRIPTOR):
+            // Descriptor type
+            switch (wValue_h)
             {
-                // Descriptor type
-                switch (wValue_h)
-                {
-                    case BOS_DESCRIPTOR:
-                        des_bytes = pgm_read_byte(&BOS_descriptor[0]);	      
-                        usb_send_descriptor(BOS_descriptor, des_bytes);         
-                        break;
+                case USB_DEVICE_DESCRIPTOR:
+                    DB_SERIAL('D');
+                    des_bytes = pgm_read_byte(&dev_des[0]);	      
+                    usb_send_descriptor(&dev_des, des_bytes);         
+                    break;
 
-                    case DEVICE_DESCRIPTOR:
-                        des_bytes = pgm_read_byte(&dev_des[0]);	      
-                        usb_send_descriptor(dev_des, des_bytes);         
-                        break;
+                case USB_BOS_DESCRIPTOR:
+                    DB_SERIAL('E');
+                    des_bytes = pgm_read_byte(&usb_bos_hierarchy);
+                    usb_send_descriptor(&usb_bos_hierarchy, des_bytes);         
+                    break;
 
-                    case CONFIGURATION_DESCRIPTOR:
-                        des_bytes = wLength_l;
-                        if (wLength_h || (wLength_l > _wTotalLength) || (wLength_l == 0)) 
-                            des_bytes = _wTotalLength;
-                        usb_send_descriptor(conf_des, des_bytes);
-                        break;
+                case USB_CONFIGURATION_DESCRIPTOR:
+                    DB_SERIAL('F');
+                    des_bytes = wLength;
+                    if ((wLength_h) || (wLength_l > sizeof(conf_des)))
+                        des_bytes = sizeof(conf_des);
+                    usb_send_descriptor(&conf_des, des_bytes);
+                    break;
 
-                    case STRING_DESCRIPTOR:
-                        // Which string
-                        switch (wValue_l)
-                        {
-                            case Lang_i:
-                                des_bytes = pgm_read_byte(&lang_des[0]);
-                                usb_send_descriptor(lang_des, des_bytes);
-                                break;
-                            case Manu_i:
-                                des_bytes = pgm_read_byte(&manu_des[0]);
-                                usb_send_descriptor(manu_des, des_bytes);
-                                break;
-                            case Prod_i:
-                                des_bytes = pgm_read_byte(&prod_des[0]);
-                                usb_send_descriptor(prod_des, des_bytes);
-                                break;
-                            case Seri_i:
-                                des_bytes = pgm_read_byte(&seri_des[0]);
-                                usb_send_descriptor(seri_des, des_bytes);
-                                break;              
-                            case MSOS_i:
-                                des_bytes = pgm_read_byte(&MS_OS_String_descriptor[0]);
-                                usb_send_descriptor(MS_OS_String_descriptor, des_bytes);
-                                break;              
-                            default:
-                                break;
+                case USB_STRING_DESCRIPTOR:
+                    DB_SERIAL('G');
+                    if (wValue_l == Lang_i) {
+                        des_bytes = pgm_read_byte(&lang_des[0]);
+                        usb_send_descriptor(lang_des, des_bytes);
                         }
-                        break;
+                    else if (wValue_l == Manu_i) {
+                        des_bytes = pgm_read_byte(&manu_des[0]);
+                        usb_send_descriptor(manu_des, des_bytes);
+                        }
+                    else if (wValue_l == Prod_i) {
+                        des_bytes = pgm_read_byte(&prod_des[0]);
+                        usb_send_descriptor(prod_des, des_bytes);
+                        }
+                    else if (wValue_l == Seri_i) {
+                        des_bytes = pgm_read_byte(&seri_des[0]);
+                        usb_send_descriptor(seri_des, des_bytes);
+                        }
+                    else
+                        DB_SERIAL('s');
+                    break;
 
-                    default:
-                        break; 
-                }      
+                default:
+                    DB_SERIAL('d');
+                    break; 
             }
             break;
 
+
+        case USB_CMD(IN, DEVICE, VENDOR, WINUSB_VENDOR_CODE):
+            DB_SERIAL('H');
+            des_bytes = pgm_read_byte(&usb_msos_descriptor_set);
+            usb_send_descriptor(&usb_msos_descriptor_set, des_bytes);         
+            break;
+
         // 2 Phase, no data phase
-        case SET_CONFIGURATION:
+        case USB_CMD(OUT, DEVICE, STANDARD, SET_CONFIGURATION):
+            DB_SERIAL('I');
             // Reset any endpoints here...
             UENUM = 0;                              // Select EP0
             CBI(UEINTX, TXINI);                     // Send ZLP
             while (!(UEINTX & TXINI_m));            // Wait until ZLP is send and bank is cleared
             break;
 
-        default: 
-            SBI(UECONX,STALLRQ);
-               break;
-        }
-    }
-    // b[6:5] = 10, vendor request type
-    else if((bmRequestType & 0x60) == 0x40)
-    {
-        switch(bRequest)
-        {
-            case MS_BOS_REQUEST:
-                des_bytes = pgm_read_byte(&MS_OS_DESC_SET[0]);
-                usb_send_descriptor(seri_des, des_bytes);
-                break;              
+        case USB_CMD(OUT, DEVICE, VENDOR, VENDOR_CMD_LED_ON):
+            DB_SERIAL('J');
+            // Update SOS button counter with value from host
+            leds_on = true;
+            CBI(UEINTX, TXINI);                 // Send OUT package (ZLP) and clear bank
+            while (!(UEINTX & TXINI_m));        // Wait for bank to be cleared
+            break;
 
-            case VENDOR_CMD_SET_COUNTER:
-                // Update SOS button counter with value from host
-                button_counter = wValue_l;
-                CBI(UEINTX, TXINI);                 // Send OUT package (ZLP) and clear bank
-                while (!(UEINTX & TXINI_m));        // Wait for bank to be cleared
-                break;
+        case USB_CMD(OUT, DEVICE, VENDOR, VENDOR_CMD_LED_OFF):
+            DB_SERIAL('K');
+            leds_on = false;
+            CBI(UEINTX, TXINI);                 // Send OUT package (ZLP) and clear bank
+            while (!(UEINTX & TXINI_m));        // Wait for bank to be cleared
+            break;
 
-            case VENDOR_CMD_GET_COUNTER:
-                // Return current SOS button counter value to host. Increment locally every time.
-                UEDATX = button_counter++;
-                for(i=1 ; i<length ; i++)
-                {
-                    UEDATX = i;
-                    if ((i % Ep0_fs) == 0)
-                    {
-                        // FIFO is full, send data
-                        CBI(UEINTX,TXINI);                             // Send IN package
-                        while (!(UEINTX & (RXOUTI_m | TXINI_m)));      // Wait for ACK from host
-                    }
+        case USB_CMD(OUT, DEVICE, VENDOR, VENDOR_CMD_TOGGLE_LED):
+            DB_SERIAL('L');
+            TX_LED_TOGGLE;
+            CBI(UEINTX, TXINI);                 // Send OUT package (ZLP) and clear bank
+            while (!(UEINTX & TXINI_m));        // Wait for bank to be cleared
+            break;
+
+        case USB_CMD(OUT, DEVICE, VENDOR, VENDOR_CMD_SET_COUNTER):
+            DB_SERIAL('M');
+            // Update SOS button counter with value from host
+            button_counter = wValue_l;
+            CBI(UEINTX, TXINI);                 // Send OUT package (ZLP) and clear bank
+            while (!(UEINTX & TXINI_m));        // Wait for bank to be cleared
+            break;
+
+        case USB_CMD(IN, DEVICE, VENDOR, VENDOR_CMD_GET_COUNTER):
+            DB_SERIAL('N');
+            // Return current SOS button counter value to host. Increment locally every time.
+            UEDATX = button_counter++;
+            for(uint8_t i=1 ; i<wLength_l ; i++)
+            {
+                UEDATX = i;
+                if ((i % Ep0_fs) == 0) {
+                    // FIFO is full, send data
+                    CBI(UEINTX,TXINI);                             // Send IN package
+                    while (!(UEINTX & (RXOUTI_m | TXINI_m)));      // Wait for ACK from host
                 }
-                if (!(UEINTX & RXOUTI_m))
-                {
-                    CBI(UEINTX,TXINI);                                 // Send IN package
-                    while (!(UEINTX & RXOUTI_m));                      // Wait for (ZLP) ACK from host
-                }   
+            }
+            if (!(UEINTX & RXOUTI_m)) {
+                CBI(UEINTX,TXINI);                                 // Send IN package
+                while (!(UEINTX & RXOUTI_m));                      // Wait for (ZLP) ACK from host
+            }   
 
-                CBI(UEINTX,RXOUTI);     // Handshake to acknowledge IRQ
+            CBI(UEINTX,RXOUTI);     // Handshake to acknowledge IRQ
 
-            default:
-                SBI(UECONX,STALLRQ);
-                break;
-        }
+        default:
+            DB_SERIAL('k');
+            prequest();
+            wLength = USB_CMD(OUT, DEVICE, VENDOR, VENDOR_CMD_TOGGLE_LED);
+            phexword(wLength);
+            pcrlf();
+
+            SBI(UECONX,STALLRQ);
+            break;
     }
-    else
-        SBI(UECONX,STALLRQ);    // Not a recognised request, STALL response
 }
 
 
@@ -517,8 +557,10 @@ Bit     Field
  * @param descriptor	descriptor to send
  * @param desc_bytes    size of descriptors
  */
-void usb_send_descriptor(const uint8_t* descriptor, uint8_t desc_bytes)
+void usb_send_descriptor(const void* ptr, uint8_t desc_bytes)
 {
+const uint8_t* descriptor = (const uint8_t*) ptr;
+
     for (uint16_t i=1 ; i<=desc_bytes ; i++)
     {
         // Abort if the host wants to

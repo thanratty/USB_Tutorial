@@ -2,26 +2,6 @@
 #define _USB_DEFS_
 
 
-// There are eight Standard Device Requests
-
-#define     GET_STATUS                  0x00
-#define     CLEAR_FEATURE               0x01
-#define     SET_FEATURE                 0x03
-#define     SET_ADDRESS                 0x05
-#define     GET_DESCRIPTOR              0x06
-#define     SET_DESCRIPTOR              0x07
-#define     GET_CONFIGURATION           0x08
-#define     SET_CONFIGURATION           0x09
-
-
-// Descriptor types
-
-#define     DEVICE_DESCRIPTOR           0x01
-#define     CONFIGURATION_DESCRIPTOR    0x02
-#define     STRING_DESCRIPTOR           0x03
-#define     BOS_DESCRIPTOR              0x0f
-
-
 
 // Use VID = 0x8477 and PID = 0x3118
 #define     MY_VID                      0x8477
@@ -40,26 +20,6 @@
 #define     RXOUTI_m        (1<<RXOUTI)
 #define     TXINI_m         (1<<TXINI)
 #define     UVREGE_m        (1<<UVREGE)
-
-
-
-// Microsoft OS 2.0 descriptor types
-
-#define     MS_OS_20_SET_HEADER_DESCRIPTOR	        0x00
-#define     MS_OS_20_SUBSET_HEADER_CONFIGURATION	0x01
-#define     MS_OS_20_SUBSET_HEADER_FUNCTION	        0x02
-#define     MS_OS_20_FEATURE_COMPATBLE_ID	        0x03
-#define     MS_OS_20_FEATURE_REG_PROPERTY	        0x04
-#define     MS_OS_20_FEATURE_MIN_RESUME_TIME	    0x05
-#define     MS_OS_20_FEATURE_MODEL_ID	            0x06
-#define     MS_OS_20_FEATURE_CCGP_DEVICE	        0x07
-#define     MS_OS_20_FEATURE_VENDOR_REVISION	    0x08
-
-
-
-
-
-
 
 
 

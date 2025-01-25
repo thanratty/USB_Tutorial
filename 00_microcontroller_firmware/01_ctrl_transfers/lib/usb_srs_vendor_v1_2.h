@@ -59,7 +59,21 @@ Endpoint 0, Control OUT, 8 byte FIFO
 #define Prod_i     2   /* ProductStringIndex */
 #define Seri_i     3   /* SerialNumberStringIndex */
 #define Intf_i     2   /* InterfaceStringIndex */
-#define MSOS_i      0xee        // MS WCID string descriptor
+//#define MSOS_i     0xee        // MS WCID string descriptor index
+
+
+
+/*
+ * Our private commands sent through the control endpoint.
+ */
+#define     USB_VENDOR_CMD_SET_COUNTER      1
+#define     USB_VENDOR_CMD_GET_COUNTER      2
+#define     USB_VENDOR_CMD_LED_ON           3
+#define     USB_VENDOR_CMD_LED_OFF          4
+#define     USB_VENDOR_CMD_TOGGLE_LED       5
+
+
+
 
 /* Base functions */
 void usb_init_device(void);
@@ -67,7 +81,8 @@ void usb_init_endpoint(uint8_t nu, uint8_t ty, uint8_t di, uint8_t si, uint8_t b
 
 /* Functions for enumeration */
 void usb_ep0_setup(void);
-void usb_send_descriptor(const uint8_t* descriptor, uint8_t db);
+//void usb_send_descriptor(const uint8_t* descriptor, uint8_t db);
+void usb_send_descriptor(const void* ptr, uint8_t desc_bytes);
 
 extern uint8_t display;
 
