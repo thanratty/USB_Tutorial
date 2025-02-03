@@ -62,8 +62,6 @@
 
 
 
-
-
 void usb_init_device(void);
 
 
