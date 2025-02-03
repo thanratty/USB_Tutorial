@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <stdalign.h>
 
-
+#include "usb-defs.h"
 
 
 
@@ -24,13 +24,15 @@ typedef struct USB_PACK
 } usb_request_t;
 
 
-/*
 typedef struct USB_PACK
 {
   uint8_t   bLength;
-  uint8_t   bDescriptorType;
-} usb_descriptor_header_t;
-*/
+  uint8_t   bType;
+  uint8_t   bEpNumber;
+  uint8_t   bAttributes;
+  uint16_t  wPacketSize;
+  uint8_t   bInterval;
+} usb_endpoint_t;
 
 
 typedef struct USB_PACK
@@ -66,15 +68,16 @@ typedef struct USB_PACK
 
 typedef struct USB_PACK
 {
-  uint8_t   bLength;
-  uint8_t   bDescriptorType;
-  uint16_t  wTotalLength;
-  uint8_t   bNumInterfaces;
-  uint8_t   bConfigurationValue;
-  uint8_t   iConfiguration;
-  uint8_t   bmAttributes;
-  uint8_t   bMaxPower;
+  uint8_t                       bLength;
+  uint8_t                       bDescriptorType;
+  uint16_t                      wTotalLength;
+  uint8_t                       bNumInterfaces;
+  uint8_t                       bConfigurationValue;
+  uint8_t                       iConfiguration;
+  uint8_t                       bmAttributes;
+  uint8_t                       bMaxPower;
   usb_interface_descriptor_t    interface;
+  usb_endpoint_t                endpoints[ NUM_ENDPOINTS ];
 } usb_config_descriptor_t;
 
 typedef struct USB_PACK
@@ -124,30 +127,25 @@ typedef struct USB_PACK
 } usb_bos_descriptor_t;
 
 
-
-
-
-
 typedef struct USB_PACK
 {
   uint16_t  wLength;
   uint16_t  wDescriptorType;
   uint16_t  wStringType;
   uint16_t  wPropertyNameLength;
-  uint8_t   PropertyName[ 42 ];
+  uint8_t   PropertyName[ 42 ];         // Specific use case for WinUSB configuration
   uint16_t  wPropertyDataLength;
-  uint8_t   PropertyData[ 80 ];
+  uint8_t   PropertyData[ 80 ];         // Specific use case for WinUSB configuration
 } usb_reg_property_GUID_descriptor_t;
-
 
 
 typedef struct USB_PACK
 {
   uint16_t  wLength;
   uint16_t  wDescriptorType;
-  uint8_t   CompatibleID[8];        // Corrent
-  uint8_t   SubCompatibleID[8];     // Correct
-  usb_reg_property_GUID_descriptor_t        regprop;
+  uint8_t   CompatibleID[ 8 ];                // Corrent
+  uint8_t   SubCompatibleID[ 8 ];             // Correct
+  usb_reg_property_GUID_descriptor_t  regprop;
 } usb_msos_compatble_feature_descriptor_t;
 
 
@@ -160,17 +158,11 @@ typedef struct USB_PACK
 } usb_msos_descriptor_set_header_t;
 
 
-
 typedef struct USB_PACK
 {
     usb_msos_descriptor_set_header_t            header;
     usb_msos_compatble_feature_descriptor_t     feature;
 } usb_msos_descriptor_set_t;
-
-
-
-
-
 
 
 

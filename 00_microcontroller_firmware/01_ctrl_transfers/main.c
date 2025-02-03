@@ -29,8 +29,8 @@ extern bool leds_on;						// Sent from host
 
 void InitTestButton( void )
 {
-	CBI(DDRD, BTEST_BIT);		// Input
-	SBI(PORTD, BTEST_BIT);	// Pull-up
+	CLEAR_BIT(DDRD, BTEST_BIT);		// Input
+	SET_BIT(PORTD, BTEST_BIT);	// Pull-up
 
     EICRA = (1 << ISC11) | (0 << ISC10);  	// b'10 interrupt on falling edge of INT1 pin
     EIMSK = (1 << INT1);  					// Enable INT1 external interrupt
@@ -53,7 +53,7 @@ void InitTimer0( void )
 	OCR0A   = 128;
 
 	// Enable Output Compare Match Interrupr
-	SBI(TIMSK0, OCIE0A);
+	SET_BIT(TIMSK0, OCIE0A);
 
 	// Zero counter
 	TCNT0   = 0x00;

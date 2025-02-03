@@ -4,11 +4,12 @@
 
 /* Meta Information */
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Johannes 4 GNU/Linux");
-MODULE_DESCRIPTION("A driver for my Atmega32U4 USB device");
+MODULE_AUTHOR("Dufflepod");
+MODULE_DESCRIPTION("Driver for SOS emergency button Atmega32U4 USB device");
+MODULE_INFO(intree, "Y")
 
-#define VENDOR_ID 0x03eb
-#define PRODUCT_ID 0x0001
+#define VENDOR_ID 	0x8477
+#define PRODUCT_ID 	0x3118
 
 static struct usb_device_id usb_dev_table [] = {
 	{ USB_DEVICE(VENDOR_ID, PRODUCT_ID) },
@@ -17,16 +18,16 @@ static struct usb_device_id usb_dev_table [] = {
 MODULE_DEVICE_TABLE(usb, usb_dev_table);
 
 static int my_usb_probe(struct usb_interface *intf, const struct usb_device_id *id) {
-	printk("my_usb_devdrv - Probe Function\n");
+	printk("sos_driver - Probe Function\n");
 	return 0;
 }
 
 static void my_usb_disconnect(struct usb_interface *intf) {
-	printk("my_usb_devdrv - Disconnect Function\n");
+	printk("sos_driver - Disconnect Function\n");
 }
 
 static struct usb_driver my_usb_driver = {
-	.name = "my_usb_devdrv",
+	.name = "sos_driver",
 	.id_table = usb_dev_table,
 	.probe = my_usb_probe,
 	.disconnect = my_usb_disconnect,
@@ -51,7 +52,7 @@ static int __init my_init(void) {
  * @brief This function is called, when the module is removed from the kernel
  */
 static void __exit my_exit(void) {
-	printk("my_usb_devdrv - Exit Function\n");
+	printk("sos_driver - Exit Function\n");
 	usb_deregister(&my_usb_driver);
 }
 

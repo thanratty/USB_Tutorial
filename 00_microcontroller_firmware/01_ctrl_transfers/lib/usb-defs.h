@@ -1,50 +1,26 @@
 #ifndef _USB_DEFS_H_
 #define _USB_DEFS_H_
 
+#include "usb-vendor.h"
 
 
-#define     MY_VID                  0x8477
-#define     MY_PID                  0x3119
-#define     MY_DEVICE_VERSION       0x0003
+// Must be at least USB 2.1 for automatic MS BOS descriptor parsing for WinUSB
+#define     USB_VERSION                         0x0210
 
-#define     USB_VERSION             0x0210
 
-#define     USB_CMD_WINUSB_VENDOR_CODE          0x27
-
+// Minimum Windows version 8.1
 #define     USB_WINUSB_WINDOWS_VERSION          0x06030000
+
 
 #define     USB_WINUSB_PLATFORM_CAPABILITY_ID \
     { 0xdf, 0x60, 0xdd, 0xd8, 0x89, 0x45, 0xc7, 0x4c, \
       0x9c, 0xd2, 0x65, 0x9d, 0x9e, 0x64, 0x8a, 0x9f }
 
 
-/**
- * Our private commands sent through the control endpoint.
- */
-#define     USB_CMD_VENDOR_SET_COUNTER      1
-#define     USB_CMD_VENDOR_GET_COUNTER      2
-#define     USB_CMD_VENDOR_LED_ON           3
-#define     USB_CMD_VENDOR_LED_OFF          4
-#define     USB_CMD_VENDOR_TOGGLE_LED       5
-
-
-
-
-
-
-
-
-#define USB_LANGID_ENGLISH     0x0409 // English (United States)
-
-#define USB_PACK               __attribute__((packed))
-
-#define USB_LIMIT(a, b)        (((int)(a) > (int)(b)) ? (int)(b) : (int)(a))
-
-#define USB_CMD_VALUE(bRequest,bmRequestType)     ((bRequest << 8) | bmRequestType)
-
-#define USB_CMD(dir, rcpt, type, cmd) \
-    ((USB_CMD_##cmd << 8) | (USB_##dir##_TRANSFER << 7) | \
-     (USB_##type##_REQUEST << 5) | (USB_##rcpt##_RECIPIENT << 0))
+#define     USB_LANGID_ENGLISH     0x0409 
+#define     USB_PACK               __attribute__((packed))
+#define     LOW(x)                ((x) & 0xFF)
+#define     HIGH(x)               (((x)>>8) & 0xFF)
 
 
 
@@ -142,14 +118,7 @@ enum
 
 enum
 {
-  USB_DEVICE_CLASS_MISCELLANEOUS   = 0xef,
-  USB_DEVICE_CLASS_VENDOR_SPECIFIC = 0xff,
-};
-
-
-enum
-{
-  USB_DEVICE_SUBCLASS_COMMON = 0x02,
+  USB_CLASS_VENDOR_SPECIFIC = 0xff,
 };
 
 

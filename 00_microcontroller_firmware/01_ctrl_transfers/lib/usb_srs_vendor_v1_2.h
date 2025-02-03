@@ -20,7 +20,6 @@
 #define _USB_SRS_H_
 
 #include <stdint.h>
-
 #include <avr/io.h>
 
 #include "usb-defs.h" 
@@ -28,6 +27,9 @@
 
 
 
+// ATMega32u4 prescaler for USB PLL with a 16 MHz crystal
+//
+#define     PLLPRE          0x10
 
 
 // Prepare some handy bit masks from bit numbers
@@ -43,27 +45,26 @@
 #define     UVREGE_m        (1<<UVREGE)
 
 
-
 // Macros to make program easier to read
 //
-#define CBI(adr,bitnum)    (adr &= ~(1<<(bitnum)))    /* Clear bit # in SF-register (ASM) */
-#define SBI(adr,bitnum)    (adr |=  (1<<(bitnum)))    /* Set bit # in SF-register (ASM) */
+#define CLEAR_BIT(adr,bitnum)       (adr &= ~(1<<(bitnum)))    // Clear bit # in SF-register (ASM)
+#define SET_BIT(adr,bitnum)         (adr |=  (1<<(bitnum)))    // Set bit # in SF-register (ASM)
 
 
-
-// Prescaler for USB PLL with a 16 MHz crystal
+// Handy macros for command handling
 //
-#define PLLPRE 0x10
+#define USB_CMD_VALUE(bRequest,bmRequestType)     ((bRequest << 8) | bmRequestType)
+
+#define USB_CMD(dir, rcpt, type, cmd) \
+    ((USB_CMD_##cmd << 8) | (USB_##dir##_TRANSFER << 7) | \
+     (USB_##type##_REQUEST << 5) | (USB_##rcpt##_RECIPIENT << 0))
+
+
 
 
 
 
 void usb_init_device(void);
-void usb_init_endpoint(uint8_t num, uint8_t type, uint8_t direction, uint8_t size, uint8_t bank);
-
-/* Functions for enumeration */
-void usb_ep0_setup(void);
-void usb_send_descriptor(const void* ptr, uint8_t desc_bytes);
 
 
 #endif

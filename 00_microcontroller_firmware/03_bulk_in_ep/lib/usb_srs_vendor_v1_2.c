@@ -36,7 +36,7 @@ ISR(USB_GEN_vect) {
 		CBI (UDINT,EORSTI); 	/* Clear  end of reset interrupt */
 		/* Init Endpoint 0 */
 		usb_init_endpoint(0, Ep0_ty, Ep0_di, Ep0_si, Ep0_ba);    
-		SBI(UEIENX,RXSTPE);	/* Enable RX IRQ */  
+		SET_BIT(UEIENX,RXSTPE);	/* Enable RX IRQ */  
 	}
 }
 
@@ -109,10 +109,10 @@ void usb_init_device(void) {
  */
 void usb_init_endpoint(uint8_t number_ep, uint8_t type, uint8_t direction, uint8_t size, uint8_t bank) {
 	UENUM = number_ep; /* Select EP */
-	SBI(UECONX,EPEN); /* Enable EP */
+	SET_BIT(UECONX,EPEN); /* Enable EP */
 	UECFG0X = ((type << 6) | (direction)); /* Set type and direction */
 	UECFG1X = ((size << 4) | (bank << 2)); /* Set size and nr. of banks */
-	SBI(UECFG1X,ALLOC); /* Allocate memory for EP */
+	SET_BIT(UECFG1X,ALLOC); /* Allocate memory for EP */
 }
 
 /**
@@ -153,7 +153,8 @@ void usb_ep0_setup(void) {
 	static const uint8_t PROGMEM conf_des[] =  {
 		9,        /* bLength = 0x09, descriptor length in bytes */
 		0x02,     /* bDescriptorType = 0x02, Descriptor ID = 2 -> Configuration descriptor */
-		low(wTotalLength),high(wTotalLength),  /* wTotalLength, length of  Configuration */
+		LOW(wTotalLength),
+		HIGH(wTotalLength),  /* wTotalLength, length of  Configuration */
 		0x01,     /* bNumInterfaces = 1 */
 		0x01,     /* bConfigurationValue = 1, must not be 0 */
 		0,        /* iConfiguration = 0, index for str.-descriptor configuration */
@@ -175,14 +176,16 @@ void usb_ep0_setup(void) {
 		0x05,     /* bDescriptorType = 0x05 -> EP descriptor */
 		0x01,     /* bEndpointNumber = 0x01 Bit 7 Direction of EP -> 0 (OUT), Bit 0-3 Nr. of EP  */
 		0x02,     /* bmAttributes = 0x2 -> Transfer Type Bulk */
-		low(Ep1_fs), high(Ep1_fs), /* wMaxPacketSize = 8 Bytes */
+		LOW(Ep1_fs),
+		HIGH(Ep1_fs), /* wMaxPacketSize = 8 Bytes */
 		0,        /* bInterval, only used for isochronous EP */
 		/* EP descriptor for EP 2*/
 		7,        /* bLength = 7 bytes */
 		0x05,     /* bDescriptorType = 0x05 -> EP descriptor */
 		0x82,     /* bEndpointNumber = 0x01 Bit 7 Direction of EP -> 0 (OUT), Bit 0-3 Nr. of EP  */
 		0x02,     /* bmAttributes = 0x2 -> Transfer Type Bulk */
-		low(Ep2_fs), high(Ep2_fs), /* wMaxPacketSize = 8 Bytes */
+		LOW(Ep2_fs),
+		HIGH(Ep2_fs), /* wMaxPacketSize = 8 Bytes */
 		0,        /* bInterval, only used for isochronous EP */
 	};                    
 	/*** Language Descriptor ***/      
@@ -226,7 +229,7 @@ void usb_ep0_setup(void) {
 	wLength_h = UEDATX; 
 	length = wLength_l + (wLength_h << 8);
 
-	CBI(UEINTX, RXSTPI); /* Ack received Setup package */
+	CLEAR_BIT(UEINTX, RXSTPI); /* Ack received Setup package */
                     
 	if ((bmRequestType & 0x60) == 0) {
 		/* Type = Standard Device Request */ 
@@ -234,15 +237,15 @@ void usb_ep0_setup(void) {
 		case 0x00: /* GET_STATUS 3 Phases */
 			UEDATX = 0; /* Send back 16 Bit for status -> Not self powered, no wakeup, not halted */
 			UEDATX = 0;
-			CBI(UEINTX,TXINI); /* send data (ACK) and clear FIFO */
+			CLEAR_BIT(UEINTX,TXINI); /* send data (ACK) and clear FIFO */
 			while (!(UEINTX & (1 << RXOUTI)));  /* wait for ZLP from host */
-			CBI(UEINTX, RXOUTI); /* Clear flag */
+			CLEAR_BIT(UEINTX, RXOUTI); /* Clear flag */
 			break;
 		case 0x05: /* SET_ADDRESS 2 Phasen (no data phase ) */
 			UDADDR = (wValue_l & 0x7F); /* Sace address at UADD  (ADDEN = 0) */
-			CBI(UEINTX,TXINI); /* Send OUT package (ZLP) and clear bank */
+			CLEAR_BIT(UEINTX,TXINI); /* Send OUT package (ZLP) and clear bank */
 			while (!(UEINTX & (1<<TXINI))); /* wait for bank to be cleared */
-			SBI(UDADDR, ADDEN); /* enable address */
+			SET_BIT(UDADDR, ADDEN); /* enable address */
 			break;
 		case 0x06: {
 			/* GET_DESCRIPTOR 3 Phasen Transfer */
@@ -285,24 +288,24 @@ void usb_ep0_setup(void) {
 		case 0x09: /* SET_CONFIGURATION 2 Phasen no data phases */
 			for(i=1; i<=Nr_eps; i++) {
 				UENUM = i;
-				CBI(UECONX, EPEN); /* Disable EP */
-				CBI(UECFG1X, ALLOC); /* Free memory of EP */
+				CLEAR_BIT(UECONX, EPEN); /* Disable EP */
+				CLEAR_BIT(UECFG1X, ALLOC); /* Free memory of EP */
 			}
 			usb_init_endpoint(1, Ep1_ty, Ep1_di, Ep1_si, Ep1_ba);
-			SBI(UEIENX, RXOUTE);
+			SET_BIT(UEIENX, RXOUTE);
 			usb_init_endpoint(2, Ep2_ty, Ep2_di, Ep2_si, Ep2_ba);
-			SBI(UEIENX, NAKINE);
+			SET_BIT(UEIENX, NAKINE);
 
 			UENUM = 0; /* select EP0 */
-			CBI(UEINTX, TXINI); /* send ZLP */
+			CLEAR_BIT(UEINTX, TXINI); /* send ZLP */
 			while (!(UEINTX & (1<<TXINI))); /* Wait until ZLP is send and bank is cleared */
 			break;
 		default: 
-			SBI(UECONX,STALLRQ);
+			SET_BIT(UECONX,STALLRQ);
 		   	break;
 		}
 	}
-	else SBI(UECONX,STALLRQ); /* no standard request, STALL response */
+	else SET_BIT(UECONX,STALLRQ); /* no standard request, STALL response */
 }
 
 /*! \brief Sende Deskriptor zum PC (22.14 IN-EP management S 275)
@@ -327,21 +330,21 @@ void usb_send_descriptor(uint8_t descriptor[] ,uint8_t desc_bytes) {
 		/* after 8 Bytes send the package and delete memory bank */ 
 		if ((i % Ep0_fs) == 0) {
 			/* FIFO is full, send data */
-			CBI(UEINTX,TXINI); /* Send IN package */
+			CLEAR_BIT(UEINTX,TXINI); /* Send IN package */
 			while (!(UEINTX & ((1<<RXOUTI) | (1<<TXINI)))); /* Wait for ACK from host */
 		}
 	}
 	if (!(UEINTX & (1 << RXOUTI))) {
-		CBI(UEINTX,TXINI); /* Send IN package */
+		CLEAR_BIT(UEINTX,TXINI); /* Send IN package */
 		while (!(UEINTX & (1 << RXOUTI))); /* Wait for (ZLP) ACK from host */
 	}   
-	CBI(UEINTX, RXOUTI); /* Handshake to acknowledge IRQ */
+	CLEAR_BIT(UEINTX, RXOUTI); /* Handshake to acknowledge IRQ */
 }
 
 void usb_ep1_out() {
 	int i;
 	if(UEINTX & (1<<RXOUTI)) {
-		CBI(UEINTX, RXOUTI);  /* ACK package */
+		CLEAR_BIT(UEINTX, RXOUTI);  /* ACK package */
 		for(i=0; i<Ep1_fs; i++) {
 			if( UEINTX & (1<<RWAL)) /* Is there any data in the FIFO */
 				ep1_buf[i] = UEDATX;
@@ -350,21 +353,21 @@ void usb_ep1_out() {
 		}
 		ep1_flag = 1;
 	}
-	CBI(UEINTX, FIFOCON); /* Release the FIFO */
+	CLEAR_BIT(UEINTX, FIFOCON); /* Release the FIFO */
 }
 
 void usb_ep2_in() {
 	int i;
 	if(UEINTX & (1<<NAKINI)) { /* Is there an USB IN request */
-		CBI(UEINTX, NAKINI);   /* Ack it */
+		CLEAR_BIT(UEINTX, NAKINI);   /* Ack it */
 		if(UEINTX & (1<<TXINI)) { /* Is FIFO empty */
-			CBI(UEINTX, TXINI); /* clear flag */
+			CLEAR_BIT(UEINTX, TXINI); /* clear flag */
 			if(ep2_flag == 1) {
 				for(i=0; i<8; i++) 
 					UEDATX = ep2_buf[i];
 				ep2_flag = 0;
 			}
-			CBI(UEINTX, FIFOCON); /* Free the FIFO */
+			CLEAR_BIT(UEINTX, FIFOCON); /* Free the FIFO */
 		}
 	}
 }

@@ -2,3 +2,8 @@
 *.elf
 *.hex
 *.bin
+00_microcontroller_firmware/01_ctrl_transfers/AsmMakesfile
+00_microcontroller_firmware/01_ctrl_transfers/usb_blink_control.map
+01_kernelspace_driver
+00_microcontroller_firmware/02_bulk_out_ep
+00_microcontroller_firmware/03_bulk_in_ep
