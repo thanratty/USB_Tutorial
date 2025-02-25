@@ -24,8 +24,8 @@
 #include <stdbool.h>
 
 /* Macros to make program easier to read */
-#define CLEAR_BIT(adr,bit)    (adr &= ~(1<<bit)) /* Clear bit in SF-register (ASM) */
-#define SET_BIT(adr,bit)    (adr |=  (1<<bit)) /* Set bit in SF-register (ASM) */
+#define CLEAR_BIT(adr,bit)  (adr &= ~(1<<bit))      /* Clear bit in SF-register (ASM) */
+#define SET_BIT(adr,bit)    (adr |=  (1<<bit))      /* Set bit in SF-register (ASM) */
 
 /* Prescaler for USB PLL */
 #define PLLPRE 0x10 /* Value for 16MHz crystal */
@@ -43,36 +43,23 @@ Endpoint 0, Control OUT, 8 byte FIFO */
 #define Ep0_ba 0    /* 1 Bank */
 #define Ep0_fs 8    
 
-/* Endpoint 1, BULK OUT, 8 byte FIFO */
+/* Endpoint 1, BULK OUT, 8 byte FIFO (not used!) */
 #define Ep1_ty 2    /* Type BULK */
 #define Ep1_di 0    /* Direction OUT */
 #define Ep1_si 0    /* Size: 8 Bytes */
 #define Ep1_ba 0    /* 1 Bank */
 #define Ep1_fs 8
 
-/* Number of Endpoints without EP0 */
-#define Nr_eps 1
+/* Number of Endpoints >>EXCLUDING<< EP0 */
+#define Nr_eps 0
 #define wTotalLength 9+9+(7*Nr_eps)
-
-/* Status codes */
-#define Lang_i     0   /* LanguageDescriptorIndex */
-#define Manu_i     1   /* ManufacturerStringIndex */
-#define Prod_i     2   /* ProductStringIndex */
-#define Seri_i     3   /* SerialNumberStringIndex */
-#define Intf_i     2   /* InterfaceStringIndex */
 
 /* base functions */
 void usb_init_device(void);
 void usb_init_endpoint(uint8_t nu,uint8_t ty,uint8_t di,uint8_t si,uint8_t ba);
 
-/* functions for  enumeration */
-void usb_ep0_setup(void);
-void usb_send_descriptor(uint8_t de[] ,uint8_t db);
-
 /* Global variables for EP */
 extern volatile uint8_t ep1_buf[8];
 extern volatile uint8_t ep1_flag;
-
-void usb_ep1_out(void);
 
 #endif
